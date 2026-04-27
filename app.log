@@ -1,0 +1,9 @@
+[2026-04-26 09:43:55,532 - INFO] - Received from 127.0.0.1: hello world
+
+[2026-04-26 09:46:58,596 - INFO] - Received from 127.0.0.1: hello world
+
+[2026-04-26 09:47:02,727 - ERROR] - Connection Error: [Errno 111] Connection refused
+[2026-04-26 09:49:42,169 - INFO] - Sent:     hello world
+[2026-04-26 09:49:42,169 - INFO] - Received from 127.0.0.1: hello world
+
+[2026-04-26 09:49:42,169 - INFO] - Received: HELLO WORLD
