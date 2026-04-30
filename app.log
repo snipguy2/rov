@@ -1,9 +1,51 @@
-[2026-04-26 09:43:55,532 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:18:05,860 - INFO] - Sent:     hello world
+[2026-04-30 00:18:05,860 - INFO] - Received from 127.0.0.1: hello world
 
-[2026-04-26 09:46:58,596 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:18:05,861 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:19:23,176 - INFO] - Sent:     hello world
+[2026-04-30 00:19:23,176 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:19:23,176 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:19:24,174 - INFO] - Sent:     hello world
+[2026-04-30 00:19:24,175 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:19:24,175 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:19:25,275 - INFO] - Sent:     hello world
+[2026-04-30 00:19:25,275 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:19:25,275 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:20:07,592 - INFO] - Sent:     hello world
+[2026-04-30 00:20:07,592 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:20:07,593 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:20:08,944 - INFO] - Sent:     hello world
+[2026-04-30 00:20:08,945 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:20:08,945 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:20:29,874 - INFO] - Sent:     hello world
+[2026-04-30 00:20:29,875 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:20:29,875 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:20:36,180 - INFO] - Sent:     hello world
+[2026-04-30 00:20:36,180 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:20:36,180 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:20:43,613 - INFO] - Sent:     hello world
+[2026-04-30 00:20:43,614 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:20:43,614 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:21:36,132 - INFO] - Sent:     hello world
+[2026-04-30 00:21:36,133 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:21:36,133 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:22:03,858 - INFO] - Sent:     hello world
+[2026-04-30 00:22:03,858 - INFO] - Received from 127.0.0.1: hello world
 
-[2026-04-26 09:47:02,727 - ERROR] - Connection Error: [Errno 111] Connection refused
-[2026-04-26 09:49:42,169 - INFO] - Sent:     hello world
-[2026-04-26 09:49:42,169 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:22:03,859 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:22:05,015 - INFO] - Sent:     hello world
+[2026-04-30 00:22:05,015 - INFO] - Received from 127.0.0.1: hello world
 
-[2026-04-26 09:49:42,169 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:22:05,016 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:22:28,953 - INFO] - Sent:     hello world
+[2026-04-30 00:22:28,954 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:22:28,954 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:22:29,785 - INFO] - Sent:     hello world
+[2026-04-30 00:22:29,785 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:22:29,785 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:22:30,848 - INFO] - Sent:     hello world
+[2026-04-30 00:22:30,849 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:22:30,849 - INFO] - Received: HELLO WORLD
+[2026-04-30 00:22:39,605 - INFO] - Sent:     hello world
+[2026-04-30 00:22:39,605 - INFO] - Received from 127.0.0.1: hello world
+[2026-04-30 00:22:39,606 - INFO] - Received: HELLO WORLD

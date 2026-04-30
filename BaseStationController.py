@@ -4,7 +4,7 @@ import logging
 #logging configuration
 logging.basicConfig(
     level=logging.DEBUG,
-    format='[%(asctime)s - %(levelname)s] - %(message)s',
+    format=f'[%(asctime)s - %(levelname)s] - %(message)s',
     filename='app.log',
     filemode='a'  # 'a' for append, 'w' for overwrite
 )
@@ -22,7 +22,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.connect((HOST, PORT))
         
         # Send data
-        sock.sendall(bytes(data + "\n", "utf-8"))
+        sock.sendall(bytes(data, "utf-8"))
         logger.info(f"Sent:     {data}")
 
         # Receive data from the server and shut down

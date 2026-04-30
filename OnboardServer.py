@@ -1,17 +1,17 @@
 import socketserver
 import logging
+import LoggerUtilities
 
 #Logging configurations
 #===================================
 logging.basicConfig(
     level=logging.DEBUG,
-    format='[%(asctime)s - %(levelname)s] - %(message)s',
+    format=f'[%(asctime)s - %(levelname)s] - %(message)s',
     filename='app.log',
     filemode='a'  # 'a' for append, 'w' for overwrite
 )
 logger = logging.getLogger(__name__)
-
-
+conLogger = LoggerUtilities.create_file_logger("ConnectionLogger", "connection.log", f'[%(asctime)s - %(levelname)s] - %(message)s',logging.INFO)
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
@@ -21,7 +21,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             if not self.data:
                 break
             # Process data (ideally put into a thread-safe Queue)
-            logger.info(f"Received from {self.client_address[0]}: {self.data.decode()}")
+            conLogger.info(f"Received from {self.client_address[0]}: {self.data.decode()}")
             
             # Send back the same data in uppercase to client
             self.request.sendall(self.data.upper())
