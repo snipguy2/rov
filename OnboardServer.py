@@ -17,14 +17,14 @@ logging.basicConfig(
 #===================================
 
 
-EMULATION_MODE = True #set to false if working with real hardware
+EMULATION_MODE = False #set to false if working with real hardware
 
 logger = logging.getLogger(__name__)
 conLogger = LoggerUtilities.create_file_logger("ConnectionLogger", "connection.log", f'[%(asctime)s - %(levelname)s] - %(message)s',logging.INFO)
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
-        #arduino = ArdunioInterface.ArdunioMega()
+        self.arduino = ArdunioInterface.ArdunioMega()
         # Read from socket and handle messages
         while True:
             data = self.request.recv(1024).strip().decode('utf-8')
@@ -57,7 +57,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         
     def handlePingArduinoMessage(self, payload):
         print(f"==> Sending PING_ARDUINO to ardunio...")
-        print(f"==> Payload Sent: {payload}")
+        self.arduino.send_message("1")
         
     def handleBar30DataMessage(self, payload):
         print(f"==> Sending BAR_30_DATA to ardunio...")

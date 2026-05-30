@@ -39,18 +39,15 @@ class LeftJoystickForwardY:
     
 @dataclass
 class LeftJoystickBackwardY:
-    name : str "BACKWARD_Y"
+    name : str = "BACKWARD_Y"
     scale : float = 0.0
     
 @dataclass
 class LeftJoystickLeftX:
-    name : str "LEFT_X"
+    name : str = "LEFT_X"
     scale : float = 0.0
     
 @dataclass 
 class LeftJoystickRightX:
-    name :str "RIGHT_X"
+    name :str = "RIGHT_X"
     scale : float = 0.0
-    
-@dataclass
-class 
