@@ -13,7 +13,7 @@ from PyQt6.QtGui import(
 )
 
 import cv2
-import logging, sys,os
+import logging, sys, os, time
 logger = logging.getLogger(__name__)
 
 
@@ -64,6 +64,9 @@ class Worker(QThread):
         while self.ThreadActive:
             if not self.cap.isOpened():
                 print("Error: Could not open video stream.")
+                self.cap.release()
+                time.sleep(3)
+                self.cap = cv2.VideoCapture(STREAM_URL, cv2.CAP_FFMPEG)
                 continue
             ret, frame = self.cap.read()
             if not ret:
@@ -86,7 +89,7 @@ class Worker(QThread):
         
     
 class SensorDataWindow(QWidget):
-    def __init__(self, paren=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.layout = QGridLayout()
         self.create_widgets()

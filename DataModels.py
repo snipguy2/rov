@@ -1,26 +1,29 @@
 from PyQt6.QtCore import (
     QObject, pyqtSignal
 )
+from PyQt6.QtWidgets import (
+    QLabel
+)
 
 class LeakSensorDataModel(QObject):
     dataChanged = pyqtSignal(str)
     
-    def __init__(self, initial_text="N/A"):
+    def __init__(self, initial_leak_status:bool=False):
         super().__init__()
-        self._text = initial_text
+        self._leakPresent:bool = initial_leak_status
         
     @property
-    def text(self):
-        return self._text
+    def leakPresent(self):
+        return self._leakPresent
     
-    @text.setter
-    def text(self, new_text):
-        if self._text != new_text:
-            self._text = new_text
-            self.dataChanged.emit(self._text) # Emit signal on change
+    @leakPresent.setter
+    def leakPresent(self, new_text):
+        if self._leakPresent != new_text:
+            self._leakPresent = new_text
+            self.dataChanged.emit(self._leakPresent) # Emit signal on change
     
     
-#=========================
+#===============================
 class MyController(QObject):
     def __init__(self, model, view, parent=None):
         super().__init__(parent)

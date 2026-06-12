@@ -6,23 +6,38 @@ os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|rtsp_flags;lis
 
 # Replace with your actual stream URL
 # Example: 'rtsp://user:pass@192.168.1.100:554/live'
-url = 'tcp://localhost:1234' 
+VID_URL = 'tcp://localhost:1234' 
 
-cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+def connect_to_stream(url:str) -> None:
+    cap = cv2.VideoCapture(url, cv2.CAP_FFMPEG)
+    if not cap.isOpened():
+        print("Error: Could not open video stream.")
+    return cap
 
-if not cap.isOpened():
-    print("Error: Could not open video stream.")
-    exit()
+def execute(capture: cv2.VideoCapture):
+    while True:
+        ret, frame = capture.read()
+        if not ret:
+            break
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+        cv2.imshow('TCP Network Stream', frame)
 
-    cv2.imshow('TCP Network Stream', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    
+    
+def main():
+    cap: cv2.VideoCapture = connect_to_stream(VID_URL)
+    
+    # Run loop for video refresh:
+    execute(cap)
+    #===========================
+    
+    # Deallocate and release cv2 capture stream:
+    cap.release()
+    cv2.destroyAllWindows()
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+if __name__ == "__main__":
+    main()
 
-cap.release()
-cv2.destroyAllWindows()
+
