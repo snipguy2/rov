@@ -4,9 +4,11 @@ from PyQt6.QtCore import (
 from PyQt6.QtWidgets import (
     QLabel
 )
+from MessageStructs import *
+
 
 class LeakSensorDataModel(QObject):
-    dataChanged = pyqtSignal(str)
+    dataChanged = pyqtSignal(bool)
     
     def __init__(self, initial_leak_status:bool=False):
         super().__init__()
@@ -17,12 +19,58 @@ class LeakSensorDataModel(QObject):
         return self._leakPresent
     
     @leakPresent.setter
-    def leakPresent(self, new_text):
-        if self._leakPresent != new_text:
-            self._leakPresent = new_text
+    def leakPresent(self, leak_status):
+        if self._leakPresent != leak_status:
+            self._leakPresent = leak_status
             self.dataChanged.emit(self._leakPresent) # Emit signal on change
+
+
+class DepthSensorDataModel(QObject):
+    dataChanged = pyqtSignal(float)
     
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._temperature: float = -99.99
+        self._pressure: float = -99.99
+        
+    @property
+    def temperature(self):
+        return self._temperature
     
+    @temperature.setter
+    def temperature(self, temperature):
+        if self._temperature != temperature:
+            self._temperature = temperature
+            self.dataChanged.emit(self._temperature)
+    
+    @property
+    def pressure(self):
+        return self._pressure
+    
+    @pressure.setter
+    def pressure(self, pressure):
+        if self._pressure != pressure:
+            self._pressure = pressure
+            self.dataChanged.emit(self._pressure)
+
+class FluidDensityDataModel(QObject):
+    dataChanged = pyqtSignal(float)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._fluidDensity: float = 997.0
+        
+    @property
+    def fluidDensity(self):
+        return self._fluidDensity
+    
+    @fluidDensity.setter
+    def fluidDensity(self, density:float):
+        if self._fluidDensity != density:
+            self._fluidDensity = density
+            self.dataChanged.emit(self._fluidDensity)
+
+            
 #===============================
 class MyController(QObject):
     def __init__(self, model, view, parent=None):
