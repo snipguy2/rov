@@ -1,9 +1,73 @@
 # views.py
 import os
 from typing import Any
-from PyQt6.QtCore import Qt, pyqtSignal, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QThread
 from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QPushButton, QFileDialog
 from dataclasses import fields
+from PyQt6.QtGui import QImage, QPixmap
+
+import cv2, time
+    
+os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|rtsp_flags;listen'
+STREAM_URL = 'tcp://localhost:1234' 
+
+class StreamWindow(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout()
+        self.create_widgets()
+        self.apply_layout()
+        self.worker = Worker()
+        self.worker.ImageUpdate.connect(self.image_update)
+        self.worker.start()
+        
+    def image_update(self, image):
+        self.imageLabel.setPixmap(QPixmap.fromImage(image))
+        
+    def create_widgets(self):
+        self.imageLabel = QLabel()
+        self.cancelButton = QPushButton("Cancel")
+        
+    def setup_signals(self):
+        self.cancelButton.clicked.connect(self.stop_video_feed)
+        
+    def apply_layout(self):
+        self.layout.addWidget(self.imageLabel)
+        self.setLayout(self.layout)
+        
+    def stop_video_feed(self):
+        self.worker.stop()
+        
+class Worker(QThread):
+    ImageUpdate = pyqtSignal(QImage)
+    def run(self):
+        self.ThreadActive = True
+        self.cap = cv2.VideoCapture(STREAM_URL, cv2.CAP_FFMPEG)
+        while self.ThreadActive:
+            if not self.cap.isOpened():
+                print("Error: Could not open video stream.")
+                self.cap.release()
+                time.sleep(3)
+                self.cap = cv2.VideoCapture(STREAM_URL, cv2.CAP_FFMPEG)
+                continue
+            ret, frame = self.cap.read()
+            if not ret:
+                break
+            
+            #self.image = cv2.cvtColor(frame, cv2.COLOR_BayerGB2RGB)
+            self.image = frame
+            flippedImage = cv2.flip(self.image, 1)
+            qtFormatted = QImage(flippedImage.data, flippedImage.shape[1], flippedImage.shape[0], QImage.Format.Format_RGB888)
+            pic = qtFormatted.scaled(640,480, Qt.AspectRatioMode.KeepAspectRatio)
+            self.ImageUpdate.emit(pic)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+    def stop(self):
+        self.ThreadActive = False
+        self.cap.release()
+        cv2.destroyAllWindows()
 
 class SensorMonitorWidget(QWidget):
     """Visual panel that expands dynamically to match any input dataclass schema structure."""
