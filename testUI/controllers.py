@@ -19,6 +19,9 @@ class TelemetryController:
         self.timer.timeout.connect(self.generate_and_pass_data)
         self.timer.start(1000)
 
+        # --- Track simulated hardware outages ---
+        self.simulated_outage_ticks = 0
+
     def set_active_log_file(self, path: str):
         """Prepares destination file pathways by appending column header identifiers."""
         self.log_file_path = path
@@ -34,6 +37,22 @@ class TelemetryController:
 
     def generate_and_pass_data(self):
         """Simulates external receiver hardware capturing telemetry updates."""
+
+        # --- Outage Simulation Logic ---
+        # If we are currently in a simulated outage, skip this cycle
+        if self.simulated_outage_ticks > 0:
+            self.simulated_outage_ticks -= 1
+            print(f"Hardware hang... (Skipped packet, {self.simulated_outage_ticks} seconds until recovery)")
+            return
+            
+        # 5% chance on any given tick to trigger a 4-second hardware failure
+        # (This 4-second drop guarantees it trips the view's 3-second watchdog)
+        if random.random() < 0.05:
+            self.simulated_outage_ticks = 4
+            print("\n[!] Simulated hardware failure! Dropping packets...")
+            return
+        # ------------------------------------
+
         # Generates fresh randomized values for all fields in our dataclass
         new_packet = SensorReadings(
             temperature=random.uniform(18.0, 35.0),
