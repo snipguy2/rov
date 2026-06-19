@@ -7,6 +7,7 @@ class SensorReadings:
     
     Add or remove fields here, and the UI adapts automatically.
     """
+    timestamp: str
     temperature: float
     humidity: float
     pressure: float

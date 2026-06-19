@@ -1,6 +1,7 @@
 # controllers.py
 import csv
 import os
+from datetime import datetime
 import random
 from PyQt6.QtCore import QTimer
 from models import SensorReadings
@@ -53,8 +54,12 @@ class TelemetryController:
             return
         # ------------------------------------
 
+        # Grab the current time and format it
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         # Generates fresh randomized values for all fields in our dataclass
         new_packet = SensorReadings(
+            timestamp=current_time, # <-- Populate the new field
             temperature=random.uniform(18.0, 35.0),
             humidity=random.uniform(30.0, 75.0),
             pressure=random.uniform(980.0, 1030.0),
