@@ -2,7 +2,25 @@
 import os
 from typing import Any
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QThread
-from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QPushButton, QFileDialog
+from PyQt6.QtWidgets import (
+    QWidget, QGridLayout, QLabel, QVBoxLayout, QPushButton, QFileDialog,
+    QHBoxLayout, QLineEdit
+)
+
+from dataclasses import fields
+from PyQt6.QtGui import QImage, QPixmap
+
+import cv2, time
+    
+os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|rtsp_flags;listen'
+STREAM_URL = 'tcp://localhost:1234' 
+
+# views.py
+import os
+from typing import Any
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer, QThread
+# Added QStackedWidget to the imports below
+from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QVBoxLayout, QPushButton, QFileDialog, QStackedWidget
 from dataclasses import fields
 from PyQt6.QtGui import QImage, QPixmap
 
@@ -17,61 +35,139 @@ class StreamWindow(QWidget):
         self.layout = QVBoxLayout()
         self.create_widgets()
         self.apply_layout()
-        self.worker = Worker()
+        
+        # Instantiate a SINGLE persistent worker thread
+        self.worker = Worker('localhost')
         self.worker.ImageUpdate.connect(self.image_update)
-        self.worker.start()
+        self.worker.ConnectionStatus.connect(self.update_stream_status)
+        # --- Avoiding starting stream up on init with sim data ---"
+        # self.worker.start()
         
     def image_update(self, image):
         self.imageLabel.setPixmap(QPixmap.fromImage(image))
         
+    def update_stream_status(self, is_connected):
+        if is_connected:
+            self.stacked_widget.setCurrentWidget(self.imageLabel)
+        else:
+            self.stacked_widget.setCurrentWidget(self.placeholderLabel)
+            
     def create_widgets(self):
-        self.imageLabel = QLabel()
-        self.cancelButton = QPushButton("Cancel")
+        self.stacked_widget = QStackedWidget()
         
-    def setup_signals(self):
-        self.cancelButton.clicked.connect(self.stop_video_feed)
+        self.placeholderLabel = QLabel("Video Stream Unavailable (Retrying...)")
+        self.placeholderLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.placeholderLabel.setStyleSheet("background-color: #222; color: #fff; font-size: 16px; border: 1px solid red;")
+        
+        self.imageLabel = QLabel()
+        self.imageLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        
+        self.stacked_widget.addWidget(self.placeholderLabel)
+        self.stacked_widget.addWidget(self.imageLabel)
         
     def apply_layout(self):
-        self.layout.addWidget(self.imageLabel)
+        self.layout.addWidget(self.stacked_widget)
         self.setLayout(self.layout)
-        
-    def stop_video_feed(self):
+
+    def set_stream_ip(self, ip_address: str):
+        """Updates the video source dynamically."""
+        # 1. Stop current capture
         self.worker.stop()
+        self.worker.wait()
         
+        # 2. Update the URL
+        # If localhost/sim, use the standard local port
+        if ip_address.strip().lower() in ["localhost", "127.0.0.1", "sim"]:
+            self.worker.update_target(ip_address.strip().lower())
+        else:
+            self.worker.update_target(ip_address.strip().lower())
+            
+        # 3. Restart the worker with the new URL
+        self.worker.start()
+
+
 class Worker(QThread):
     ImageUpdate = pyqtSignal(QImage)
-    def run(self):
+    ConnectionStatus = pyqtSignal(bool)
+
+    def __init__(self, initial_ip: str):
+        super().__init__()
+        self.current_ip = initial_ip
+        self.target_ip = initial_ip
         self.ThreadActive = True
-        self.cap = cv2.VideoCapture(STREAM_URL, cv2.CAP_FFMPEG)
+        self.cap = None
+
+    def update_target(self, new_ip: str):
+        """Thread-safe method called by the main UI thread to change targets."""
+        self.target_ip = new_ip
+
+    def run(self):
         while self.ThreadActive:
+            # 1. If the IP target changed, release the old resource and reconfigure
+            if self.current_ip != self.target_ip or self.cap is None:
+                self.current_ip = self.target_ip
+                if self.cap is not None:
+                    self.cap.release()
+                    self.cap = None
+                
+                # Set FFMPEG options dynamically right before initialization
+                if self.current_ip in ["localhost", "127.0.0.1", "sim"]:
+                    stream_url = "tcp://localhost:1234"
+                    # Localhost uses server mode ('listen') and a short 2-second timeout
+                    os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|rtsp_flags;listen|timeout;2000000|rw_timeout;2000000'
+                else:
+                    stream_url = f"tcp://{self.current_ip}:1234"
+                    # Remote connections REMOVE 'listen' so we act as a normal network client connection
+                    os.environ['OPENCV_FFMPEG_CAPTURE_OPTIONS'] = 'rtsp_transport;tcp|timeout;2000000|rw_timeout;2000000'
+                
+                self.cap = cv2.VideoCapture(stream_url, cv2.CAP_FFMPEG)
+
+            # 2. Check if the connection stream succeeded
             if not self.cap.isOpened():
-                print("Error: Could not open video stream.")
+                self.ConnectionStatus.emit(False)
                 self.cap.release()
-                time.sleep(3)
-                self.cap = cv2.VideoCapture(STREAM_URL, cv2.CAP_FFMPEG)
+                self.cap = None
+                
+                # Intermittent 5-second sleep that wakes up instantly if the user updates the IP box
+                for _ in range(50):
+                    if not self.ThreadActive or self.current_ip != self.target_ip:
+                        break
+                    time.sleep(0.1)
                 continue
+                
+            # 3. Read incoming frames from the network stream
             ret, frame = self.cap.read()
             if not ret:
-                break
+                self.ConnectionStatus.emit(False)
+                self.cap.release()
+                self.cap = None
+                
+                for _ in range(50): 
+                    if not self.ThreadActive or self.current_ip != self.target_ip:
+                        break
+                    time.sleep(0.1)
+                continue
             
-            #self.image = cv2.cvtColor(frame, cv2.COLOR_BayerGB2RGB)
-            self.image = frame
-            flippedImage = cv2.flip(self.image, 1)
+            # 4. Stream successfully reading frames
+            self.ConnectionStatus.emit(True) 
+            
+            flippedImage = cv2.flip(frame, 1)
             qtFormatted = QImage(flippedImage.data, flippedImage.shape[1], flippedImage.shape[0], QImage.Format.Format_RGB888)
-            pic = qtFormatted.scaled(640,480, Qt.AspectRatioMode.KeepAspectRatio)
+            pic = qtFormatted.scaled(640, 480, Qt.AspectRatioMode.KeepAspectRatio)
             self.ImageUpdate.emit(pic)
 
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        # Thread closing cleanup
+        if self.cap is not None:
+            self.cap.release()
 
     def stop(self):
         self.ThreadActive = False
-        self.cap.release()
-        cv2.destroyAllWindows()
+        
 
 class SensorMonitorWidget(QWidget):
     """Visual panel that expands dynamically to match any input dataclass schema structure."""
     file_selected = pyqtSignal(str)
+    connect_requested = pyqtSignal(str)
 
     def __init__(self, data_class_type: Any):
         super().__init__()
@@ -87,6 +183,19 @@ class SensorMonitorWidget(QWidget):
         main_layout = QVBoxLayout(self)
         grid_layout = QGridLayout()
         main_layout.addLayout(grid_layout)
+
+        # --- NEW: Network Connection UI ---
+        network_layout = QHBoxLayout()
+        self.ip_input = QLineEdit("192.168.110.100") # Default placeholder IP
+        self.ip_input.setPlaceholderText("Enter RPi IP Address...")
+        self.connect_btn = QPushButton("Connect to Pi")
+        self.connect_btn.clicked.connect(self.trigger_connection)
+        
+        network_layout.addWidget(QLabel("<b>RPi IP:</b>"))
+        network_layout.addWidget(self.ip_input)
+        network_layout.addWidget(self.connect_btn)
+        main_layout.addLayout(network_layout)
+        # ----------------------------------
 
         # 1. Dynamically read properties and construct visual interface blocks
         for i, field in enumerate(fields(self.data_class_type)):
@@ -124,6 +233,14 @@ class SensorMonitorWidget(QWidget):
 
         self.watchdog_timer.start(self.watchdog_timeout_ms)
 
+    def trigger_connection(self):
+        """Fires when the connect button is clicked."""
+        ip_addr = self.ip_input.text().strip()
+        if ip_addr:
+            self.status_label.setStyleSheet("color: orange;")
+            self.status_label.setText(f"Attempting to connect to {ip_addr}...")
+            self.connect_requested.emit(ip_addr)
+
     def prompt_for_file(self):
         """Opens a file dialog system frame to save incoming data streams."""
         file_path, _ = QFileDialog.getSaveFileName(
@@ -138,17 +255,29 @@ class SensorMonitorWidget(QWidget):
     def update_display(self, data: Any):
         """Loops dynamically through the payload attributes to push text to fields."""
 
+        # Keep the global watchdog alive as long as we are receiving packets at all
         self.watchdog_timer.start(self.watchdog_timeout_ms)
 
         for field in fields(data):
             val = getattr(data, field.name)
-            display_text = f"{val:.2f}" if isinstance(val, float) else str(val)
             
-            # Match the variable name to our stored label and change its text
             if field.name in self.value_labels:
-                # Optionally remove "Stale" styling if the stream recovers
-                self.value_labels[field.name].setStyleSheet("") 
-                self.value_labels[field.name].setText(display_text)
+                label = self.value_labels[field.name]
+
+                # Check if the individual sensor failed to report data
+                if val is None:
+                    # Prevent appending "Stale" infinitely if it's already stale
+                    if "Stale" not in label.text() and label.text() != "Waiting...":
+                        label.setStyleSheet("color: gray;")
+                        label.setText(f"Stale ({label.text()})")
+                    elif label.text() == "Waiting...":
+                        label.setStyleSheet("color: gray;")
+                        label.setText("Stale (No Data)")
+                else:
+                    # Sensor is reporting valid data, format normally and remove stale styling
+                    display_text = f"{val:.2f}" if isinstance(val, float) else str(val)
+                    label.setStyleSheet("") 
+                    label.setText(display_text)
                 
         self.status_label.setStyleSheet("color: green;")
         self.status_label.setText("🟢 Metrics parsed from incoming dataclass container")

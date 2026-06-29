@@ -5,7 +5,6 @@ from models import SensorReadings
 from views import SensorMonitorWidget, StreamWindow
 from controllers import TelemetryController
 
-
 class MainApp(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -17,6 +16,10 @@ class MainApp(QWidget):
         self.sensorDisplay = SensorMonitorWidget(SensorReadings)
         self.cameraDisplay = StreamWindow(self)
         self.telementryController = TelemetryController(self.sensorDisplay)
+        
+        # --- Wire the IP signal to the camera display too ---
+        self.sensorDisplay.connect_requested.connect(self.telementryController.handle_connection_request)
+        self.sensorDisplay.connect_requested.connect(self.cameraDisplay.set_stream_ip)
 
     def apply_layout(self):
         self.layout.addWidget(self.cameraDisplay)

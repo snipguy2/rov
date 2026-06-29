@@ -1,65 +1,128 @@
 # controllers.py
 import csv
 import os
-from datetime import datetime
+import json
+import socket
 import random
-from PyQt6.QtCore import QTimer
+from datetime import datetime
+from PyQt6.QtCore import QThread, pyqtSignal, QTimer
 from models import SensorReadings
 from views import SensorMonitorWidget
 
+class NetworkReceiverThread(QThread):
+    """Background thread to handle blocking TCP socket connections."""
+    new_packet = pyqtSignal(SensorReadings)
+    connection_status = pyqtSignal(str, bool) 
+
+    def __init__(self, ip: str, port: int = 5005):
+        super().__init__()
+        self.ip = ip
+        self.port = port
+        self.is_running = True
+        self.socket = None
+
+    def run(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.settimeout(3.0) 
+        
+        try:
+            self.socket.connect((self.ip, self.port))
+            self.connection_status.emit(f"🟢 Connected to {self.ip}:{self.port}", True)
+            
+            # Change from None (infinite block) to 1.0 second.
+            # This forces f.readline() to throw a timeout every 1 sec if there's no data,
+            # allowing the while loop to check if self.is_running has changed to False.
+            self.socket.settimeout(1.0) 
+            
+            with self.socket.makefile('r', encoding='utf-8') as f:
+                while self.is_running:
+                    try:
+                        line = f.readline()
+                        if not line:
+                            break 
+                        
+                        data_dict = json.loads(line)
+                        packet = SensorReadings(**data_dict)
+                        self.new_packet.emit(packet)
+                    except socket.timeout:
+                        # Just a read timeout, loop around and check if we are still running
+                        continue
+                    except json.JSONDecodeError:
+                        continue
+                        
+        except Exception as e:
+            if self.is_running: # Only trigger fallback if the connection genuinely died
+                self.connection_status.emit("Pi Unavailable", False)
+        finally:
+            if self.socket:
+                try:
+                    self.socket.close()
+                except Exception:
+                    pass
+            if self.is_running:
+                self.connection_status.emit("Disconnected", False)
+
+    def stop(self):
+        self.is_running = False
+        
+        # CRITICAL FIX: Forcefully snap the socket out of any hanging operation
+        if self.socket:
+            try:
+                self.socket.shutdown(socket.SHUT_RDWR)
+                self.socket.close()
+            except Exception:
+                pass
+                
+        # Wait a maximum of 500ms before abandoning the thread to avoid UI freeze
+        self.wait(500)
+
+
 class TelemetryController:
-    """Manages sampling intervals and automatically mirrors the shape of the data model."""
+    """Manages routing of data, with a switch to activate simulation upon request."""
     def __init__(self, view: SensorMonitorWidget):
         self.view = view
         self.log_file_path = None
         
+        # Setup Simulation Timer (initially stopped)
+        self.sim_timer = QTimer()
+        self.sim_timer.timeout.connect(self.generate_simulated_data)
+        
+        # Connect to UI signals
         self.view.file_selected.connect(self.set_active_log_file)
+        # Assuming your UI has a signal for connection requests
+        self.view.connect_requested.connect(self.handle_connection_request)
 
-        # Configure continuous 1-second background polling cycle
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.generate_and_pass_data)
-        self.timer.start(1000)
-
-        # --- Track simulated hardware outages ---
-        self.simulated_outage_ticks = 0
+    def handle_connection_request(self, ip_address: str):
+        """Switches mode based on the user's input."""
+        ip_clean = ip_address.strip().lower()
+        
+        # Stop any existing simulation
+        self.sim_timer.stop()
+        
+        if ip_clean in ['localhost', '127.0.0.1', 'sim']:
+            self.view.status_label.setText(f"Status: Simulating ({ip_clean})")
+            self.sim_timer.start(1000)
+        else:
+            self.view.status_label.setText(f"Status: Connecting to {ip_address}...")
+            # Here you would trigger your actual network thread connection
+            # self.start_network_connection(ip_address)
 
     def set_active_log_file(self, path: str):
-        """Prepares destination file pathways by appending column header identifiers."""
         self.log_file_path = path
         self.view.update_logging_status(path)
-
-        # Generate headers dynamically from the model definition if the file is new
+        
         if not os.path.exists(path) or os.stat(path).st_size == 0:
             with open(path, mode='w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
-                # Instantiate a temporary object to grab dynamic headers
-                dummy = SensorReadings(0, 0, 0, 0, 0)
+                dummy = SensorReadings("", 0, 0, 0, 0, 0)
                 writer.writerow(dummy.csv_header)
 
-    def generate_and_pass_data(self):
-        """Simulates external receiver hardware capturing telemetry updates."""
-
-        # --- Outage Simulation Logic ---
-        # If we are currently in a simulated outage, skip this cycle
-        if self.simulated_outage_ticks > 0:
-            self.simulated_outage_ticks -= 1
-            print(f"Hardware hang... (Skipped packet, {self.simulated_outage_ticks} seconds until recovery)")
-            return
-            
-        # 5% chance on any given tick to trigger a 4-second hardware failure
-        # (This 4-second drop guarantees it trips the view's 3-second watchdog)
-        if random.random() < 0.05:
-            self.simulated_outage_ticks = 4
-            print("\n[!] Simulated hardware failure! Dropping packets...")
-            return
-        # ------------------------------------
-
-        # Grab the current time and format it
+    def generate_simulated_data(self):
+        """Generates fallback local data if localhost/sim mode is active."""
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Generates fresh randomized values for all fields in our dataclass
         new_packet = SensorReadings(
-            timestamp=current_time, # <-- Populate the new field
+            timestamp=current_time,
             temperature=random.uniform(18.0, 35.0),
             humidity=random.uniform(30.0, 75.0),
             pressure=random.uniform(980.0, 1030.0),
@@ -67,14 +130,12 @@ class TelemetryController:
             air_quality=random.uniform(10.0, 50.0)
         )
         
-        # Route data payload direct into user view layer
         self.view.update_display(new_packet)
 
-        # Append streaming readings into targeting file path destinations
         if self.log_file_path:
             try:
                 with open(self.log_file_path, mode='a', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f)
                     writer.writerow(new_packet.csv_row)
             except IOError as e:
-                print(f"Error appending data matrix line blocks to file destinations: {e}")
+                print(f"Error appending data: {e}")

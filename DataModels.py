@@ -85,7 +85,7 @@ class MyController(QObject):
         self._model.text = new_data # Update the model, which will trigger view update
 
 class MyModel(QObject):
-    dataChanged = pyqtSignal(str) # Signal to emit when data changes
+    dataChanged = pyqtSignal(str)ex # Signal to emit when data changes
 
     def __init__(self, initial_text="Initial Text"):
         super().__init__()
