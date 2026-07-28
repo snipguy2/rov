@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import QApplication, QHBoxLayout, QWidget, QMainWindow
 from models import SensorReadings
 from views import SensorMonitorWidget, StreamWindow
 from controllers import TelemetryController
+from control_views import ROVControlPanel
 
 class MainApp(QWidget):
     def __init__(self, parent=None):
@@ -13,17 +14,36 @@ class MainApp(QWidget):
         self.apply_layout()
 
     def create_widgets(self):
+# 1. Create the view
         self.sensorDisplay = SensorMonitorWidget(SensorReadings)
         self.cameraDisplay = StreamWindow(self)
+        
+        # 2. Create the controller with the initialized view
         self.telementryController = TelemetryController(self.sensorDisplay)
         
-        # --- Wire the IP signal to the camera display too ---
+        
+        # 3. Explicitly link them
+        self.sensorDisplay.controller = self.telementryController
+        
+        # ... signal connections ...
         self.sensorDisplay.connect_requested.connect(self.telementryController.handle_connection_request)
+        
+        self.rovControls = ROVControlPanel()
+        self.rovControls.thrust_updated.connect(self.telementryController.send_thruster_command)
+        
         self.sensorDisplay.connect_requested.connect(self.cameraDisplay.set_stream_ip)
+
+        # ADD THIS DEBUG PRINT to verify the connection exists
+        # is_connected = self.sensorDisplay.connect_requested.receivers(self.telementryController.handle_connection_request)
+        print("DEBUG: Connection wire established between widget and controller.")
+
+        # Connect the control panel's output signal to the controller's send method
+        #self.rovControls.thrust_updated.connect(self.telementryController.send_thruster_command)
 
     def apply_layout(self):
         self.layout.addWidget(self.cameraDisplay)
         self.layout.addWidget(self.sensorDisplay)
+        self.layout.addWidget(self.rovControls)
         self.setLayout(self.layout)
 
 class MainWindow(QMainWindow):

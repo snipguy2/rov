@@ -31,3 +31,25 @@ class SensorReadings:
             else:
                 row_data.append(f"{val:.2f}" if isinstance(val, float) else str(val))
         return row_data
+    
+@dataclass(frozen=True)
+class ROVCommand:
+    """Structure for thruster signals sent to the ROV."""
+    timestamp: str
+    thruster_values: list[float]  # [T1, T2, T3, T4, T5, T6, T7, T8]
+    
+    @property
+    def csv_header(self) -> list[str]:
+        return [f.name.capitalize() for f in fields(self)]
+
+    @property
+    def csv_row(self) -> list[str]:
+        row_data = []
+        for f in fields(self):
+            val = getattr(self, f.name)
+            # Handle missing data cleanly in the CSV output
+            if val is None:
+                row_data.append("N/A")
+            else:
+                row_data.append(f"{val:.2f}" if isinstance(val, float) else str(val))
+        return row_data

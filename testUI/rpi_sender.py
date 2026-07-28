@@ -1,4 +1,6 @@
 # rpi_sender.py
+# Simulation logic for feaux RPi 5
+
 import socket
 import json
 import time
