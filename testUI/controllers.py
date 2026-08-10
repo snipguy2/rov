@@ -124,7 +124,7 @@ class TelemetryController:
             self.network_thread.send_rov_command(command_packet)
         else:
             # Fallback or debug print when testing in simulation mode
-            print(f"DEBUG (Simulated Serial Out): {thruster_ints}")
+            # print(f"DEBUG (Simulated Serial Out): {thruster_ints}")
             pass
 
     def generate_simulated_data(self):
